@@ -1,6 +1,10 @@
 from pathlib import Path
+import os
 
-DATA_PATH = Path("..") / "data" / "data.csv"
+NOTEBOOKS_ROOT = Path(__file__).resolve().parents[1]
+
+STUDENT_DATA_PATH = NOTEBOOKS_ROOT / "data" / "student_data.csv"
+DIABETIC_DATA_PATH = NOTEBOOKS_ROOT / "data" / "diabetic_data.csv"
  
 CATEGORICAL_COLUMN_NAMES = [
      "Marital status",

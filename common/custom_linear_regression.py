@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin
 
-class CustomLinearRegression:
+class CustomLinearRegression(BaseEstimator, RegressorMixin):
     def __init__(self):
-        self.coefficients = None
+        self.coefficients_ = None
         
     def _fit_base(self, X, y):
         if isinstance(X, pd.DataFrame):
@@ -18,11 +19,34 @@ class CustomLinearRegression:
             
         return X_matrix, y_matrix
     
-    def fit_closed_form(self, X, y):
-        X_matrix, y_matrix = self._fit_base(X, y)
-        self.coefficients = np.linalg.inv(X_matrix.T @ X_matrix) @ X_matrix.T @ y_matrix
+    def predict(self, X):
+        if self.coefficients_ is None:
+            raise ValueError("Model is not trained.")
         
-    def fit_gradient_descent(self, X, y, **kwargs):
+        if isinstance(X, pd.DataFrame):
+            return np.c_[np.ones((X.shape[0], 1)), X.values] @ self.coefficients_
+        
+        return np.c_[np.ones((X.shape[0], 1)), X] @ self.coefficients_
+    
+    def transform(self, X):
+        return self.predict(X)
+    
+    
+class LinearRegressionClosedForm(CustomLinearRegression):
+    def __init__(self):
+        super().__init__()
+    
+    def fit(self, X, y):
+        X_matrix, y_matrix = self._fit_base(X, y)
+        self.coefficients_ = np.linalg.inv(X_matrix.T @ X_matrix) @ X_matrix.T @ y_matrix
+        return self
+        
+
+class LinearRegressionGradientDescent(CustomLinearRegression):
+    def __init__(self):
+        super().__init__()
+        
+    def fit(self, X, y, **kwargs):
         epochs = kwargs.get("epochs", 500)
         batch_size = kwargs.get("batch_size", None)
         learning_rate = kwargs.get("learning_rate", 0.01)
@@ -31,7 +55,7 @@ class CustomLinearRegression:
         
         samples_count, feat_count = X_matrix.shape
         
-        self.coefficients = np.zeros((feat_count, 1))
+        self.coefficients_ = np.zeros((feat_count, 1))
         
         for i in range(epochs):
             if batch_size:
@@ -43,19 +67,14 @@ class CustomLinearRegression:
                 y_batch = y_matrix
                 
             factor = (2 / (batch_size if batch_size else samples_count)) 
-            gradients = factor * X_batch.T @ (X_batch @ self.coefficients - y_batch)
+            gradients = factor * X_batch.T @ (X_batch @ self.coefficients_ - y_batch)
                     
-            self.coefficients -= learning_rate * gradients
+            self.coefficients_ -= learning_rate * gradients
+        
+        return self
             
         
-    def predict(self, X):
-        if self.coefficients is None:
-            raise ValueError("Model is not trained.")
-        
-        if isinstance(X, pd.DataFrame):
-            return np.c_[np.ones((X.shape[0], 1)), X.values] @ self.coefficients
-        
-        return np.c_[np.ones((X.shape[0], 1)), X] @ self.coefficients
+    
     
     
 

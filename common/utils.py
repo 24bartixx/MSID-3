@@ -1,28 +1,75 @@
-from common.consts import DATA_PATH, CATEGORICAL_COLUMN_NAMES, CATEGORY_TRANSLATIONS
+from sklearn.compose import ColumnTransformer
+from sklearn.discriminant_analysis import StandardScaler
+from common.consts import STUDENT_DATA_PATH, CATEGORICAL_COLUMN_NAMES, CATEGORY_TRANSLATIONS
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import OneHotEncoder, PolynomialFeatures
+from sklearn.linear_model import LinearRegression
 
 
-def get_data():  
-    data = pd.read_csv(DATA_PATH, sep=";")
+def get_data(data_path = STUDENT_DATA_PATH, only_numeric=False):
+    data = pd.read_csv(data_path, sep=";")
     data.columns = data.columns.str.strip()
     
-    for column_name in CATEGORICAL_COLUMN_NAMES:
-        data[column_name] = data[column_name].map(lambda field: CATEGORY_TRANSLATIONS.get(column_name, {}).get(field, field))
+    if data_path == STUDENT_DATA_PATH:
+        for column_name in CATEGORICAL_COLUMN_NAMES:
+            data[column_name] = data[column_name].map(lambda field: CATEGORY_TRANSLATIONS.get(column_name, {}).get(field, field))
+
+    if only_numeric:
+        data = data.select_dtypes(include=["number"])
         
     return data
 
-def get_numeric_data():
-    data = pd.read_csv(DATA_PATH, sep=";")
+def get_numeric_data(data_path = STUDENT_DATA_PATH, sep=";"):  
+    data = pd.read_csv(data_path, sep=sep)
     data.columns = data.columns.str.strip()
-    data_numeric = data.drop(columns=CATEGORICAL_COLUMN_NAMES)
+    if data_path == STUDENT_DATA_PATH:
+        data = data.drop(columns=CATEGORICAL_COLUMN_NAMES)
+    else:
+        data = data.select_dtypes(include=["number"])
     
-    return data_numeric
+    return data
+
+def show_polynomial_plts(X, y, degrees, x_title = None, y_title = None):
     
-def split(X, y):
+    if isinstance(X, pd.Series):
+        X = X.values
+
+    if isinstance(y, pd.Series):
+        y = y.values
+    
+    sort_indexes = np.argsort(X.flatten())
+    X_sorted = X[sort_indexes]
+    y_sorted = y[sort_indexes]
+
+    plt.figure(figsize=(8, len(degrees)*5))
+
+    for i, degree in enumerate(degrees, 1):
         
-    X_train, X_rest, y_train, y_rest = train_test_split(X, y, test_size=0.3, random_state=30)
-    X_val, X_test, y_val, y_test = train_test_split(X_rest, y_rest, test_size=0.6, random_state=30)
+        poly = PolynomialFeatures(degree=degree)
+        X_poly = poly.fit_transform(X_sorted.reshape(-1, 1))
+
+        model = LinearRegression()
+        model.fit(X_poly, y_sorted)
+
+        y_pred = model.predict(X_poly)
+
+        plt.subplot(len(degrees), 1, i)
+        plt.scatter(X_sorted, y_sorted, label="Data points")
+        plt.plot(X_sorted, y_pred, color='red', label="Polynomial regression curve")
+        plt.xlabel(x_title)
+        plt.ylabel(y_title)
+        plt.title(f"Polynomial Regression (degree {degree})")
+        plt.legend()
+        
+    plt.show()
     
-    return X_train, X_val, X_test, y_train, y_val, y_test
+def get_preprocessor(numerical_column_names, categorical_column_names):
+    return ColumnTransformer(
+        transformers=[
+            ("num", StandardScaler(), numerical_column_names),
+            ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_column_names)
+        ]
+    )
     
