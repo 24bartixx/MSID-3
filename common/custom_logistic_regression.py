@@ -78,8 +78,8 @@ class CustomLogisticRegressionBinary(BaseEstimator, RegressorMixin):
                 gradients = factor * X_batch.T @ (sigmoid - y_batch)
                 self.coefficients_ -= self.learning_rate * gradients
 
-    # def transform(self, X):
-    #         return self.predict(X)
+    def transform(self, X):
+            return self.predict(X)
     
     
 
@@ -114,6 +114,6 @@ class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
             np.argmax(self.predict_proba(X), axis=1)
         ]
     
-    # def transform(self, X):
-    #     return self.predict(X)
+    def transform(self, X):
+        return self.predict(X)
         
