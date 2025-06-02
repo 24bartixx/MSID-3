@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import scipy
+from sklearn import clone
 from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.exceptions import NotFittedError
 
@@ -98,7 +99,13 @@ class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
         self.class_labels = np.unique(y)
         for class_label in self.class_labels:
             y_bin = (y == class_label).astype(int)
-            binary_model = CustomLogisticRegressionBinary(self.epochs, self.batch_size, self.learning_rate, self.mini_batch)
+            binary_model = clone(CustomLogisticRegressionBinary(
+                epochs=self.epochs,
+                batch_size=self.batch_size,
+                learning_rate=self.learning_rate,
+                mini_batch=self.mini_batch
+            ))
+            # binary_model = CustomLogisticRegressionBinary(self.epochs, self.batch_size, self.learning_rate, self.mini_batch)
             binary_model.fit(X, y_bin)
             self.binary_models[class_label] = binary_model
         return self
