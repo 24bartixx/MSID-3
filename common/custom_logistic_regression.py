@@ -8,10 +8,11 @@ from sklearn.exceptions import NotFittedError
 
 class CustomLogisticRegressionBinary(BaseEstimator, RegressorMixin):
    
-    def __init__(self, epochs=500, batch_size=None, learning_rate=0.01, mini_batch=True):
+    def __init__(self, epochs=500, batch_size=None, learning_rate=0.01, C=0, mini_batch=True):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.C = C
         self.mini_batch = mini_batch
         self.coefficients_ = None
         
@@ -62,6 +63,11 @@ class CustomLogisticRegressionBinary(BaseEstimator, RegressorMixin):
                     
                     sigmoid = 1 / (1 + np.exp(-X_batch @ self.coefficients_))
                     gradients = X_batch.T @ (sigmoid - y_batch) / len(X_batch)
+                    
+                    l2_term = (self.C / len(X_batch)) *self.coefficients_
+                    l2_term[0] = 0
+                    
+                    gradients += l2_term
                     self.coefficients_ -= self.learning_rate * gradients
             else:
                 
@@ -77,19 +83,23 @@ class CustomLogisticRegressionBinary(BaseEstimator, RegressorMixin):
                     
                 sigmoid = 1 / (1 + np.exp(-X_batch @ self.coefficients_))
                 gradients = factor * X_batch.T @ (sigmoid - y_batch)
+                
+                l2_term = (self.C / len(X_batch)) *self.coefficients_
+                l2_term[0] = 0
+                
+                gradients += l2_term
                 self.coefficients_ -= self.learning_rate * gradients
 
     def transform(self, X):
             return self.predict(X)
     
     
-
-
 class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
-    def __init__(self, epochs=500, batch_size=None, learning_rate=0.01, mini_batch=True):
+    def __init__(self, epochs=500, batch_size=None, learning_rate=0.01, C=0, mini_batch=True):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.C = C
         self.mini_batch = mini_batch
         self.binary_models = {}
         self.class_labels = None
@@ -103,9 +113,9 @@ class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
                 epochs=self.epochs,
                 batch_size=self.batch_size,
                 learning_rate=self.learning_rate,
+                C=self.C,
                 mini_batch=self.mini_batch
             ))
-            # binary_model = CustomLogisticRegressionBinary(self.epochs, self.batch_size, self.learning_rate, self.mini_batch)
             binary_model.fit(X, y_bin)
             self.binary_models[class_label] = binary_model
         return self
