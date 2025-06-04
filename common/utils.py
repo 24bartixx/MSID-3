@@ -1,5 +1,6 @@
 from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import StandardScaler
+from sklearn.pipeline import Pipeline
 from common.consts import STUDENT_DATA_PATH, CATEGORICAL_COLUMN_NAMES, CATEGORY_TRANSLATIONS
 import pandas as pd
 import numpy as np
@@ -65,10 +66,21 @@ def show_polynomial_plts(X, y, degrees, x_title = None, y_title = None):
         
     plt.show()
     
-def get_preprocessor(numerical_column_names, categorical_column_names):
+def get_preprocessor(numerical_column_names, categorical_column_names, degree=None, include_bias=False):
+    
+    if degree is None:
+        numerical_pipeline = Pipeline([
+            ("scaler", StandardScaler())
+        ])
+    else:
+        numerical_pipeline = Pipeline([
+            ("poly", PolynomialFeatures(degree=degree, include_bias=include_bias)),
+            ("scaler", StandardScaler())
+        ])
+    
     return ColumnTransformer(
         transformers=[
-            ("num", StandardScaler(), numerical_column_names),
+            ("num", numerical_pipeline, numerical_column_names),
             ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_column_names)
         ]
     )
