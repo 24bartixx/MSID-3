@@ -106,14 +106,12 @@ class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
         self.learning_rate = learning_rate
         self.C = C
         self.mini_batch = mini_batch
-        self.binary_models = {}
-        self.class_labels = None
         
 
-    def fit(self, X, y, get_convergence_diagram=False, X_test=None, y_test=None):
+    def fit(self, X, y):
         
-        # if isinstance(y, pd.Series):
-        #     y = y.to_numpy()
+        self.binary_models = {}
+        self.class_labels = None
         
         self.class_labels = np.unique(y)
         for class_label in self.class_labels:
@@ -126,58 +124,75 @@ class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
                 mini_batch=self.mini_batch
             ))
             self.binary_models[class_label] = binary_model
-            if get_convergence_diagram:
-                binary_model.fit_init(X, y_bin)
-            else:
-                binary_model.fit(X, y_bin)
+            binary_model.fit(X, y_bin)
+        
+        return self
+    
+    
+    def fit_with_plot(self, X, y, X_test=None, y_test=None):
+        self.binary_models = {}
+        self.class_labels = None
+        
+        self.class_labels = np.unique(y)
+        for class_label in self.class_labels:
+            y_bin = (y == class_label).astype(int)
+            binary_model = clone(CustomLogisticRegressionBinary(
+                epochs=self.epochs,
+                batch_size=self.batch_size,
+                learning_rate=self.learning_rate,
+                C=self.C,
+                mini_batch=self.mini_batch
+            ))
+            self.binary_models[class_label] = binary_model
+            binary_model.fit_init(X, y_bin)
             
-        if get_convergence_diagram:
-            accuracy_train = []
-            accuracy_test = [] if X_test is not None and y_test is not None else None
+        accuracy_train = []
+        accuracy_test = [] if X_test is not None and y_test is not None else None
+        
+        for _ in range(self.epochs):
+            for binary_model in self.binary_models.values():
+                binary_model.fit_epoch()
+                
+            y_pred_train = self.predict(X)
+            accuracy_train.append(accuracy_score(y, y_pred_train))
             
-            for _ in range(self.epochs):
-                for binary_model in self.binary_models.values():
-                    binary_model.fit_epoch()
-                    
-                y_pred_train = self.predict(X)
-                accuracy_train.append(accuracy_score(y, y_pred_train))
-                
-                if X_test is not None and y_test is not None:
-                    y_pred_test = self.predict(X_test)
-                    accuracy_test.append(accuracy_score(y_test, y_pred_test))
-                
-                
-            if accuracy_test is None:
-                plt.figure(figsize=(8, 4))
-                plt.plot(accuracy_train, label="Training accuracy", color="blue")
-                plt.title("Accuracy during training")
-                plt.xlabel("Epoch")
-                plt.ylabel("Accuracy")
-                plt.grid(True)
-                plt.legend()
-                plt.tight_layout()
-                plt.show()
-            else:
-                _, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
+            if X_test is not None and y_test is not None:
+                y_pred_test = self.predict(X_test)
+                accuracy_test.append(accuracy_score(y_test, y_pred_test))
+            
+            
+        if accuracy_test is None:
+            plt.figure(figsize=(8, 4))
+            plt.plot(accuracy_train, label="Training accuracy", color="blue")
+            plt.title("Accuracy during training")
+            plt.xlabel("Epoch")
+            plt.ylabel("Accuracy")
+            plt.grid(True)
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
+        else:
+            _, axes = plt.subplots(2, 1, figsize=(8, 8), sharex=True)
 
-                axes[0].plot(accuracy_train, label="Training accuracy", color="blue")
-                axes[0].set_title("Training set accuracy")
-                axes[0].set_ylabel("Accuracy")
-                axes[0].grid(True)
-                axes[0].legend()
+            axes[0].plot(accuracy_train, label="Training accuracy", color="blue")
+            axes[0].set_title("Training set accuracy")
+            axes[0].set_ylabel("Accuracy")
+            axes[0].grid(True)
+            axes[0].legend()
 
-                axes[1].plot(accuracy_test, label="Test accuracy", color="green")
-                axes[1].set_title("Test set accuracy")
-                axes[1].set_xlabel("Epoch")
-                axes[1].set_ylabel("Accuracy")
-                axes[1].grid(True)
-                axes[1].legend()
+            axes[1].plot(accuracy_test, label="Test accuracy", color="green")
+            axes[1].set_title("Test set accuracy")
+            axes[1].set_xlabel("Epoch")
+            axes[1].set_ylabel("Accuracy")
+            axes[1].grid(True)
+            axes[1].legend()
 
-                plt.tight_layout()
-                plt.show()
+            plt.tight_layout()
+            plt.show()
                 
         
         return self
+        
     
     def predict_proba(self, X):
         return np.column_stack([
@@ -192,4 +207,7 @@ class CustomLogisticRegressionMulticlass(BaseEstimator, RegressorMixin):
     
     def transform(self, X):
         return self.predict(X)
+    
+    def score(self, X, y):
+        return accuracy_score(y, self.predict(X))
         
