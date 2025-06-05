@@ -1,3 +1,4 @@
+from sklearn.calibration import LabelEncoder
 from sklearn.metrics import accuracy_score
 from sklearn.compose import ColumnTransformer
 from sklearn.discriminant_analysis import StandardScaler
@@ -143,10 +144,13 @@ def train_with_plot(model, X, y, start=20, end=251, step=5, degree=None, include
     plt.show()
     
     
-def get_datasets(n_splits = 3, should_oversample=False):
+def get_datasets(n_splits = 3, should_oversample=False, should_label_encode=False):
     data = get_data()
     X = data.drop(columns=["Target"])
     y = data["Target"]
+    
+    if should_label_encode:
+        y = LabelEncoder().fit_transform(y)
 
     numerical_column_names = X.select_dtypes(include=["number"]).columns.tolist()
     categorical_column_names = X.select_dtypes(include=["object"]).columns.tolist()
@@ -167,7 +171,13 @@ def get_datasets(n_splits = 3, should_oversample=False):
     for train_indices, test_indices in kfold.split(X, y):
         
         X_train = X[train_indices]
-        y_train =y.iloc[train_indices]
+        
+        if isinstance(y, np.ndarray):
+            y_train = y[train_indices]
+            y_test = y[test_indices]
+        else:
+            y_train.iloc[train_indices]
+            y_test.iloc[test_indices]
 
         if should_oversample:
             X_train, y_train = smote.fit_resample(X_train, y_train)
@@ -176,7 +186,7 @@ def get_datasets(n_splits = 3, should_oversample=False):
             X_TRAIN: X_train,
             Y_TRAIN: y_train,
             X_TEST: X[test_indices],
-            Y_TEST: y.iloc[test_indices]
+            Y_TEST: y_test
         })
         
     return datasets
